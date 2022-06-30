@@ -4,11 +4,6 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-- task: NodeTool@0
-  inputs:
-    versionSpec: '>=14'
-    checkLatest: true
-    
 name: cd-openui5-sample-app
 resources:
   containers:
@@ -50,7 +45,6 @@ stages:
         - bash: 'npm config set @sap:registry "https://registry.npmjs.org/" && npm install && npm run-script test'
         - publish: $(System.DefaultWorkingDirectory)/.
           artifact: TestResult
-
 
 - stage: deploy
   displayName: Deployment to SAP Business Technology Platform (cf)
