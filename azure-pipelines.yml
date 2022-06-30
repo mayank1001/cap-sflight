@@ -48,6 +48,13 @@ stages:
         - bash: 'npm config set @sap:registry "https://registry.npmjs.org/" && npm install && npm run-script test'
         - publish: $(System.DefaultWorkingDirectory)/.
           artifact: TestResult
+        - task: PublishTestResults@2
+          inputs:
+            testResultsFormat: 'JUnit'
+            testResultsFiles: '**/TEST-*.xml'
+            mergeTestResults: true
+            failTaskOnFailedTests: true
+            testRunTitle: 'Unit testing'
 
 - stage: deploy
   displayName: Deployment to SAP Business Technology Platform (cf)
