@@ -44,8 +44,7 @@ stages:
       steps:
         - task: NodeTool@0
           inputs:
-           versionSpec: '>=14'
-           checkLatest: true
+            versionSpec: '>=14'
         - bash: 'npm config set @sap:registry "https://registry.npmjs.org/" && npm install && npm run-script test'
         - publish: $(System.DefaultWorkingDirectory)/.
           artifact: TestResult
