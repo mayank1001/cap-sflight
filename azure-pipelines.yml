@@ -43,7 +43,7 @@ stages:
       container: node
       steps:
         - task: NodeTool@0
-           inputs:
+          inputs:
            versionSpec: '>=14'
            checkLatest: true
         - bash: 'npm config set @sap:registry "https://registry.npmjs.org/" && npm install && npm run-script test'
