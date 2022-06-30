@@ -42,13 +42,10 @@ stages:
         vmImage: 'ubuntu-latest'
       container: node
       steps:
-- task: NodeTool@0
-  inputs:
-    versionSpec: '>=14'
-    checkLatest: true
-          inputs:
-          versionSpec: '>=14'
-          checkLatest: true
+        - task: NodeTool@0
+           inputs:
+           versionSpec: '>=14'
+           checkLatest: true
         - bash: 'npm config set @sap:registry "https://registry.npmjs.org/" && npm install && npm run-script test'
         - publish: $(System.DefaultWorkingDirectory)/.
           artifact: TestResult
