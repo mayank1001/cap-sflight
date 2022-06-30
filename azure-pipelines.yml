@@ -25,7 +25,7 @@ pool:
 
 stages:
 - stage: build
-  displayName: Build MTA for SAP Cloud Platform
+  displayName: Build MTA for Business Technology Platform
   jobs:
     - job: build
       container: mta
@@ -48,7 +48,7 @@ stages:
 
 
 - stage: deploy
-  displayName: Deployment to SAP Cloud Platform (cf)
+  displayName: Deployment to SAP Business Technology Platform (cf)
   jobs:
     - job: deploy
       pool:
