@@ -66,4 +66,4 @@ stages:
       steps:
         - download: current
           artifact: WebApp 
-        - bash: 'cf login -u "$(CF-USER)" -p "$(CF-PASSWORD)" -a "$(CF-API)" -o "$(CF-ORG)" -s "$(CF-SPACE)" && cf deploy $(Pipeline.Workspace)/WebApp/MySampleApp.mtar -f'
+        - bash: 'cf login -u "$(basis-user)" -p "$(basis-pwd)" -a "$(api-endpoint)" -o "$(target-org)" -s "$(traget-sapce)" && cf deploy $(Pipeline.Workspace)/WebApp/MySampleApp.mtar -f'
