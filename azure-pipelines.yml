@@ -5,6 +5,8 @@
 # https://aka.ms/yaml
 
 name: cd-openui5-sample-app
+variables:
+  - group: BTP-SBX  
 resources:
   containers:
   - container: mta
