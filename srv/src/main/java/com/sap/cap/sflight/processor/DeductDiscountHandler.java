@@ -6,15 +6,17 @@ import static java.lang.Boolean.TRUE;
 import java.math.BigDecimal;
 import java.math.MathContext;
 
+import com.sap.cds.services.persistence.PersistenceService;
+import org.springframework.stereotype.Component;
+
 import com.sap.cds.ql.Update;
+import com.sap.cds.ql.cqn.CqnUpdate;
 import com.sap.cds.services.draft.DraftService;
 import com.sap.cds.services.handler.EventHandler;
 import com.sap.cds.services.handler.annotations.On;
 import com.sap.cds.services.handler.annotations.ServiceName;
 
-import org.springframework.stereotype.Component;
-
-import cds.gen.travelservice.DeductDiscountContext;
+import cds.gen.travelservice.TravelDeductDiscountContext;
 import cds.gen.travelservice.Travel;
 import cds.gen.travelservice.TravelService_;
 import cds.gen.travelservice.Travel_;
@@ -24,46 +26,48 @@ import cds.gen.travelservice.Travel_;
 public class DeductDiscountHandler implements EventHandler {
 
 	private final DraftService draftService;
+	private final PersistenceService persistenceService;
 
-	public DeductDiscountHandler(DraftService draftService) {
+	public DeductDiscountHandler(DraftService draftService, PersistenceService persistenceService) {
 		this.draftService = draftService;
+		this.persistenceService = persistenceService;
 	}
 
 	@On(entity = Travel_.CDS_NAME)
-	public void deductDiscount(final DeductDiscountContext context) {
+	public void deductDiscount(final TravelDeductDiscountContext context) {
 
-		var travel = draftService.run(context.getCqn()).single(Travel.class);
+		Travel travel = draftService.run(context.cqn()).single(Travel.class);
 
-		BigDecimal discount = BigDecimal.valueOf(context.getPercent())
+		BigDecimal discount = BigDecimal.valueOf(context.percent())
 				.divide(BigDecimal.valueOf(100), new MathContext(3));
 
-		BigDecimal deductedBookingFee = travel.getBookingFee().subtract(travel.getBookingFee().multiply(discount))
+		BigDecimal deductedBookingFee = travel.bookingFee().subtract(travel.bookingFee().multiply(discount))
 				.round(new MathContext(3));
-		BigDecimal deductedTotalPrice = travel.getTotalPrice().subtract(deductedBookingFee);
+		BigDecimal deductedTotalPrice = travel.totalPrice().subtract(travel.totalPrice().multiply(discount));
 
-		travel.setBookingFee(deductedBookingFee);
-		travel.setTotalPrice(deductedTotalPrice);
+		travel.bookingFee(deductedBookingFee);
+		travel.totalPrice(deductedTotalPrice);
 
 		Travel update = Travel.create();
-		update.setTotalPrice(deductedTotalPrice);
-		update.setBookingFee(deductedBookingFee);
+		update.totalPrice(deductedTotalPrice);
+		update.bookingFee(deductedBookingFee);
 
 
 		context.getCdsRuntime().requestContext().privilegedUser().run(ctx -> {
 			//throw exception if travel.getIsActiveEntity is null!.
-			if (TRUE.equals(travel.getIsActiveEntity())) {
-				var updateCqn = Update.entity(TRAVEL)
-						.where(t -> t.TravelUUID().eq(travel.getTravelUUID())).data(update);
-				draftService.run(updateCqn);
+			if (TRUE.equals(travel.isActiveEntity())) {
+				CqnUpdate updateCqn = Update.entity(TRAVEL)
+						.where(t -> t.TravelUUID().eq(travel.travelUUID())).data(update);
+				persistenceService.run(updateCqn);
 			} else {
-				var updateCqn = Update.entity(TRAVEL)
-						.where(t -> t.TravelUUID().eq(travel.getTravelUUID()).and(t.IsActiveEntity().eq(travel.getIsActiveEntity()))).data(update);
+				CqnUpdate updateCqn = Update.entity(TRAVEL)
+						.where(t -> t.TravelUUID().eq(travel.travelUUID()).and(t.IsActiveEntity().eq(travel.isActiveEntity()))).data(update);
 				draftService.patchDraft(updateCqn);
 			}
 		});
 
 
-		context.setResult(travel);
+		context.result(travel);
 		context.setCompleted();
 	}
 }

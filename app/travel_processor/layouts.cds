@@ -1,7 +1,7 @@
 using TravelService from '../../srv/travel-service';
 
 //
-// annotatios that control the fiori layout
+// annotations that control the Fiori layout
 //
 
 annotate TravelService.Travel with @UI : {
@@ -43,22 +43,26 @@ annotate TravelService.Travel with @UI : {
     { $Type  : 'UI.DataFieldForAction', Action : 'TravelService.deductDiscount', Label  : '{i18n>DeductDiscount}' },
     {
       Value : TravelID,
-      ![@UI.Importance] : #High
+      @UI.Importance : #High
     },
-    { Value : to_Agency_AgencyID     },
     {
-      Value : to_Customer_CustomerID,
-      ![@UI.Importance] : #High
+      Value : (to_Agency.AgencyID),
+      @HTML5.CssDefaults: {width:'16em'}
     },
-    { Value : BeginDate              },
-    { Value : EndDate                },
-    { Value : BookingFee             },
-    { Value : TotalPrice             },
     {
-      $Type : 'UI.DataField',
-      Value : TravelStatus_code,
-      Criticality : TravelStatus.criticality,
-      ![@UI.Importance] : #High
+      Value : (to_Customer.CustomerID),
+      @UI.Importance : #High,
+      @HTML5.CssDefaults: {width:'14em'}
+    },
+    { Value : BeginDate,  @HTML5.CssDefaults: {width:'9em'} },
+    { Value : EndDate,    @HTML5.CssDefaults: {width:'9em'} },
+    { Value : BookingFee, @HTML5.CssDefaults: {width:'10em'} },
+    { Value : TotalPrice, @HTML5.CssDefaults: {width:'12em'} },
+    {
+      Value : (TravelStatus.code),
+      Criticality : (TravelStatus.code = #Open ? 2 : (TravelStatus.code = #Accepted ? 3 : 0)),
+      @UI.Importance : #High,
+      @HTML5.CssDefaults: {width:'10em'}
     }
   ],
   Facets : [{
@@ -83,22 +87,24 @@ annotate TravelService.Travel with @UI : {
         ID     : 'DateData',
         Target : '@UI.FieldGroup#DateData',
         Label  : '{i18n>Dates}'
+      },
+      {
+        $Type : 'UI.ReferenceFacet',
+        Label : '{i18n>Sustainability}',
+        ID    : 'i18nSustainability',
+        Target: '@UI.FieldGroup#i18nSustainability',
       }
-      ]
-  }, {  // booking list
-    $Type  : 'UI.ReferenceFacet',
-    Target : 'to_Booking/@UI.PresentationVariant',
-    Label  : '{i18n>Bookings}'
+    ]
   }],
   FieldGroup#TravelData : { Data : [
     { Value : TravelID               },
-    { Value : to_Agency_AgencyID     },
-    { Value : to_Customer_CustomerID },
+    { Value : (to_Agency.AgencyID)     },
+    { Value : (to_Customer.CustomerID) },
     { Value : Description            },
     {
       $Type       : 'UI.DataField',
-      Value       : TravelStatus_code,
-      Criticality : TravelStatus.criticality,
+      Value       : (TravelStatus.code),
+      Criticality : (TravelStatus.code = #Open ? 2 : (TravelStatus.code = #Accepted ? 3 : 0)),
       Label : '{i18n>Status}' // label only necessary if differs from title of element
     }
   ]},
@@ -108,8 +114,26 @@ annotate TravelService.Travel with @UI : {
   ]},
   FieldGroup #PriceData : {Data : [
     { $Type : 'UI.DataField', Value : BookingFee },
-    { $Type : 'UI.DataField', Value : TotalPrice }
-  ]}
+    { $Type : 'UI.DataField', Value : TotalPrice },
+    { $Type : 'UI.DataField', Value : (CurrencyCode.code) }
+  ]},
+  FieldGroup #i18nSustainability: {
+    $Type: 'UI.FieldGroupType',
+    Data : [
+      {
+        $Type: 'UI.DataField',
+        Value: GoGreen,
+      },
+      {
+        $Type: 'UI.DataField',
+        Value: GreenFee,
+      },
+      {
+        $Type: 'UI.DataField',
+        Value: TreesPlanted,
+      },
+    ],
+  }
 };
 
 annotate TravelService.Booking with @UI : {
@@ -135,12 +159,14 @@ annotate TravelService.Booking with @UI : {
     { Value : to_Carrier.AirlinePicURL,  Label : '  '},
     { Value : BookingID              },
     { Value : BookingDate            },
-    { Value : to_Customer_CustomerID },
-    { Value : to_Carrier_AirlineID   },
+    { Value : (to_Customer.CustomerID) },
+    { Value : (to_Carrier.AirlineID )  },
     { Value : ConnectionID,          Label : '{i18n>FlightNumber}' },
     { Value : FlightDate             },
     { Value : FlightPrice            },
-    { Value : BookingStatus_code     }
+    { Value : (BookingStatus.code),
+      Criticality : (BookingStatus.code = #New ? 2 : (BookingStatus.code = #Booked ? 3 : 0)),
+    }
   ],
   Facets : [{
     $Type  : 'UI.CollectionFacet',
@@ -159,18 +185,21 @@ annotate TravelService.Booking with @UI : {
     }]
   }, {  // supplements list
     $Type  : 'UI.ReferenceFacet',
+    ID     : 'SupplementsList',
     Target : 'to_BookSupplement/@UI.PresentationVariant',
     Label  : '{i18n>BookingSupplements}'
   }],
   FieldGroup #GeneralInformation : { Data : [
     { Value : BookingID              },
     { Value : BookingDate,           },
-    { Value : to_Customer_CustomerID },
+    { Value : (to_Customer.CustomerID) },
     { Value : BookingDate,           },
-    { Value : BookingStatus_code     }
+    { Value : (BookingStatus.code),
+      Criticality : (BookingStatus.code = #New ? 2 : (BookingStatus.code = #Booked ? 3 : 0)),
+     }
   ]},
   FieldGroup #Flight : { Data : [
-    { Value : to_Carrier_AirlineID   },
+    { Value : (to_Carrier.AirlineID) },
     { Value : ConnectionID           },
     { Value : FlightDate             },
     { Value : FlightPrice            }
@@ -198,16 +227,7 @@ annotate TravelService.BookingSupplement with @UI : {
   },
   LineItem : [
     { Value : BookingSupplementID                                       },
-    { Value : to_Supplement_SupplementID, Label : '{i18n>ProductID}'    },
-    { Value : Price,                      Label : '{i18n>ProductPrice}' }
+    { Value : (to_Supplement.SupplementID), Label : '{i18n>ProductID}'    },
+    { Value : Price,                        Label : '{i18n>ProductPrice}' }
   ],
-};
-
-annotate TravelService.Flight with @UI : {
-  PresentationVariant#SortOrderPV : {    // used in the value help for ConnectionId in Bookings
-    SortOrder      : [{
-      Property   : FlightDate,
-      Descending : true
-    }]
-  }
 };

@@ -4,12 +4,27 @@ using TravelService from '../../srv/travel-service';
 // annotations that control the behavior of fields and actions
 //
 
-// Workarounds for overly strict OData libs and clients
-annotate cds.UUID with @Core.Computed  @odata.Type : 'Edm.String';
 
-annotate TravelService.Travel with @(Common.SideEffects: {
-  SourceProperties: [BookingFee],
-  TargetProperties: ['TotalPrice']
+using { sap.fe.cap.travel.TravelStatus } from '../../db/schema';
+
+// As we use field control based on travel status for many elements, we do the computation in a calculated element
+// right here instead of repeating the same expression in multiple annotations
+extend TravelStatus with {  
+  // can't use UInt8 (which would automatically be mapped to Edm.Byte) because it's not supported on H2
+  fieldControl: Int16 @odata.Type:'Edm.Byte' enum {Inapplicable = 0; ReadOnly = 1; Optional = 3; Mandatory = 7;}
+    = (code = #Accepted ? #ReadOnly : #Mandatory );
+}
+
+
+annotate TravelService.Travel with @(Common : {
+  SideEffects: {
+    SourceProperties: [BookingFee],
+    TargetProperties: ['TotalPrice', 'GreenFee', 'TreesPlanted']
+  },
+  SideEffects #GoGreen:{
+    SourceProperties: [GoGreen],
+    TargetProperties: ['TotalPrice', 'GreenFee', 'TreesPlanted']
+  }
 }){
   BookingFee  @Common.FieldControl  : TravelStatus.fieldControl;
   BeginDate   @Common.FieldControl  : TravelStatus.fieldControl;
@@ -19,20 +34,31 @@ annotate TravelService.Travel with @(Common.SideEffects: {
 
 } actions {
   rejectTravel @(
-    Core.OperationAvailable : { $edmJson: { $Ne: [{ $Path: 'in/TravelStatus_code'}, 'X']}},
+    Core.OperationAvailable : ($self.TravelStatus.code != #Canceled),
     Common.SideEffects.TargetProperties : ['in/TravelStatus_code'],
   );
   acceptTravel @(
-    Core.OperationAvailable : { $edmJson: { $Ne: [{ $Path: 'in/TravelStatus_code'}, 'A']}},
+    Core.OperationAvailable : ($self.TravelStatus.code != #Accepted),
     Common.SideEffects.TargetProperties : ['in/TravelStatus_code'],
   );
   deductDiscount @(
-    Core.OperationAvailable : { $edmJson: { $Eq: [{ $Path: 'in/TravelStatus_code'}, 'O']}}
+    Core.OperationAvailable : ($self.TravelStatus.code = #Open),
+    Common.SideEffects.TargetProperties : ['in/TotalPrice', 'in/BookingFee'],
   );
 }
 
-annotate TravelService.Booking with @UI.CreateHidden : to_Travel.TravelStatus.createDeleteHidden;
-annotate TravelService.Booking with @UI.DeleteHidden : to_Travel.TravelStatus.createDeleteHidden;
+annotate TravelService.Travel @(
+    Common.SideEffects#ReactonItemCreationOrDeletion : {
+        SourceEntities : [
+            to_Booking
+        ],
+       TargetProperties : ['TotalPrice'
+       ]
+    }
+);
+
+annotate TravelService.Booking with @UI.CreateHidden : (to_Travel.TravelStatus.code != #Open);
+annotate TravelService.Booking with @UI.DeleteHidden : (to_Travel.TravelStatus.code != #Open);
 
 annotate TravelService.Booking {
   BookingDate   @Core.Computed;
@@ -50,10 +76,10 @@ annotate TravelService.Booking with @(
       {
         NavigationProperty : to_BookSupplement,
         InsertRestrictions : {
-          Insertable : to_Travel.TravelStatus.insertDeleteRestriction
+          Insertable : (to_Travel.TravelStatus.code = #Open)
         },
         DeleteRestrictions : {
-          Deletable : to_Travel.TravelStatus.insertDeleteRestriction
+          Deletable : (to_Travel.TravelStatus.code = #Open)
         }
       }
     ]
@@ -66,7 +92,4 @@ annotate TravelService.BookingSupplement {
   to_Supplement @Common.FieldControl  : to_Travel.TravelStatus.fieldControl;
   to_Booking    @Common.FieldControl  : to_Travel.TravelStatus.fieldControl;
   to_Travel     @Common.FieldControl  : to_Travel.TravelStatus.fieldControl;
-
 };
-
-annotate Currency with @Common.UnitSpecificScale : Decimals;
